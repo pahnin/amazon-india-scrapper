@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from .product import Product
 
 
-base_url = "https://www.amazon.com"
+base_url = "https://www.amazon.in"
 
 
 class Scraper():
@@ -26,7 +26,7 @@ class Scraper():
         """
         self.session = requests.Session()
         self.headers = {
-            'authority': 'www.amazon.com',
+            'authority': 'www.amazon.in',
             'pragma': 'no-cache',
             'cache-control': 'no-cache',
             'dnt': '1',
@@ -147,10 +147,14 @@ class Scraper():
             url: returns full url of product
         """
 
-        regexp = "a-link-normal a-text-normal".replace(' ', '\s+')
+        regexp = "a-link-normal s-no-outline".replace(' ', '\\s+')
         classes = re.compile(regexp)
-        product_url = product.find('a', attrs={'class': classes}).get('href')
-        return base_url + product_url
+        link_object = product.find('a', attrs={'class': classes})
+        if link_object is not None:
+            product_url = link_object.get('href')
+            return base_url + product_url
+        else:
+            return ""
 
     def get_product_asin(self, product):
         """ Retrieves and returns Amazon Standard Identification Number (asin) of a product
@@ -177,6 +181,7 @@ class Scraper():
         classes = re.compile(regexp)
         try:
             title = product.find('span', attrs={'class': classes})
+            print(title.text.strip())
             return title.text.strip()
 
         except AttributeError:
@@ -373,6 +378,13 @@ class Scraper():
             'div', attrs={'data-component-type': 's-search-result'})
 
         for product in product_list:
+            if product is None:
+                continue
+
+            sponsored_product = re.search(r'Sponsored', product.get_text())
+            if sponsored_product:
+                continue
+
             self.get_product_info(product)
 
     def get_products_wrapper(self, page_url):
